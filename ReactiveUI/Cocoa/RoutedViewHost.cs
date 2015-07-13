@@ -46,6 +46,8 @@ namespace ReactiveUI
 
         public RoutedViewHost()
         {
+            this.ViewContractObservable = Observable.Return<string>(null);
+
             this.WhenActivated(
                 d =>
                 {
