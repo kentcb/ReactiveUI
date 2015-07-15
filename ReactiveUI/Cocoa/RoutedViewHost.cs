@@ -2,6 +2,7 @@ using System;
 using System.Reactive.Linq;
 using ReactiveUI;
 using System.Collections.Specialized;
+using System.Reactive.Disposables;
 
 #if UNIFIED && UIKIT
 using UIKit;
@@ -21,10 +22,11 @@ namespace ReactiveUI
 {
     public class RoutedViewHost : ReactiveNavigationController
     {
+        private readonly SerialDisposable titleUpdater;
         private RoutingState router;
         private IObservable<string> viewContractObservable;
         private IViewLocator viewLocator;
-        private bool popIsRouterInstigated;
+        private bool routerInstigated;
 
         public RoutingState Router
         {
@@ -47,6 +49,7 @@ namespace ReactiveUI
         public RoutedViewHost()
         {
             this.ViewContractObservable = Observable.Return<string>(null);
+            this.titleUpdater = new SerialDisposable();
 
             this.WhenActivated(
                 d =>
@@ -56,31 +59,54 @@ namespace ReactiveUI
                         .Where(x => x.Action == NotifyCollectionChangedAction.Reset)
                         .Subscribe(_ =>
                         {
-                            this.popIsRouterInstigated = true;
+                            this.routerInstigated = true;
                             this.PopToRootViewController(true);
-                            this.popIsRouterInstigated = false;
+                            this.routerInstigated = false;
                         }));
 
                     d(this
                         .WhenAnyObservable(x => x.Router.Navigate)
                         .CombineLatest(this.WhenAnyObservable(x => x.ViewContractObservable), (_, contract) => contract)
                         .Select(contract => this.ResolveView(this.Router.GetCurrentViewModel(), contract))
-                        .Subscribe(x => this.PushViewController(x, true)));
+                        .Subscribe(x =>
+                        {
+                            this.titleUpdater.Disposable = this.Router.GetCurrentViewModel()
+                                .WhenAnyValue(y => y.UrlPathSegment)
+                                .Subscribe(y => x.NavigationItem.Title = y);
+
+                            this.routerInstigated = true;
+                            this.PushViewController(x, true);
+                            this.routerInstigated = false;
+                        }));
 
                     d(this
                         .WhenAnyObservable(x => x.Router.NavigateBack)
                         .Subscribe(x =>
                         {
-                            this.popIsRouterInstigated = true;
+                            this.routerInstigated = true;
                             this.PopViewController(true);
-                            this.popIsRouterInstigated = false;
+                            this.routerInstigated = false;
                         }));
                 });
         }
 
+        public override void PushViewController(NSViewController viewController, bool animated)
+        {
+            if (!this.routerInstigated)
+            {
+                // code must be pushing a view directly against nav controller rather than using the router, so we need to manually sync up the router state
+                // TODO: what should we _actually_ do here? Soft-check the view and VM type and ignore if they're not IViewFor/IRoutableViewModel?
+                var view = (IViewFor)viewController;
+                var viewModel = (IRoutableViewModel)view.ViewModel;
+                this.Router.NavigationStack.Add(viewModel);
+            }
+
+            base.PushViewController(viewController, animated);
+        }
+
         public override NSViewController PopViewController(bool animated)
         {
-            if (!this.popIsRouterInstigated)
+            if (!this.routerInstigated)
             {
                 // user must have clicked Back button in nav controller, so we need to manually sync up the router state
                 this.Router.NavigationStack.RemoveAt(this.router.NavigationStack.Count - 1);
@@ -119,7 +145,6 @@ namespace ReactiveUI
                         viewModel.GetType().Name));
             }
 
-            viewController.NavigationItem.Title = viewModel.UrlPathSegment;
             return viewController;
         }
     }
