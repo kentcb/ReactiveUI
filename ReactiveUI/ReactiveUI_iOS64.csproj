@@ -80,6 +80,7 @@
     <Compile Include="Cocoa\LinkerOverrides.cs" />
     <Compile Include="Cocoa\NSRunloopScheduler.cs" />
     <Compile Include="Cocoa\ReactiveNavigationController.cs" />
+    <Compile Include="Cocoa\ReactiveSplitViewController.cs" />
     <Compile Include="Cocoa\RoutedViewHost.cs" />
     <Compile Include="Cocoa\TargetActionCommandBinder.cs" />
     <Compile Include="Cocoa\ViewModelViewHost.cs" />
