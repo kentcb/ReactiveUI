@@ -55,27 +55,40 @@ namespace ReactiveUI
                 d =>
                 {
                     d(this
+                        .WhenAnyValue(x => x.Router)
+                        .Where(x => x != null)
+                        .Select(x => x.NavigationStack.ItemsAdded.StartWith(x.GetCurrentViewModel()))
+                        .Switch()
+                        .Where(x => x != null)
+                        //.CombineLatest(this.WhenAnyObservable(x => x.ViewContractObservable).StartWith((string)null), (_, contract) => contract)
+                        .Select(contract => new { View = this.ResolveView(this.Router.GetCurrentViewModel(), /*contract*/null), Animate = this.Router.NavigationStack.Count > 1 })
+                        .Subscribe(x =>
+                        {
+                            if (this.routerInstigated)
+                            {
+                                return;
+                            }
+
+                            this.titleUpdater.Disposable = this.Router.GetCurrentViewModel()
+                                .WhenAnyValue(y => y.UrlPathSegment)
+                                .Subscribe(y => x.View.NavigationItem.Title = y);
+
+                            this.routerInstigated = true;
+
+                            // super important that animate is false if it's the first view being pushed, otherwise iOS gets hella confused
+                            // and calls PushViewController twice
+                            this.PushViewController(x.View, x.Animate);
+
+                            this.routerInstigated = false;
+                        }));
+
+                    d(this
                         .WhenAnyObservable(x => x.Router.NavigationStack.Changed)
                         .Where(x => x.Action == NotifyCollectionChangedAction.Reset)
                         .Subscribe(_ =>
                         {
                             this.routerInstigated = true;
                             this.PopToRootViewController(true);
-                            this.routerInstigated = false;
-                        }));
-
-                    d(this
-                        .WhenAnyObservable(x => x.Router.Navigate)
-                        .CombineLatest(this.WhenAnyObservable(x => x.ViewContractObservable), (_, contract) => contract)
-                        .Select(contract => this.ResolveView(this.Router.GetCurrentViewModel(), contract))
-                        .Subscribe(x =>
-                        {
-                            this.titleUpdater.Disposable = this.Router.GetCurrentViewModel()
-                                .WhenAnyValue(y => y.UrlPathSegment)
-                                .Subscribe(y => x.NavigationItem.Title = y);
-
-                            this.routerInstigated = true;
-                            this.PushViewController(x, true);
                             this.routerInstigated = false;
                         }));
 
@@ -92,6 +105,8 @@ namespace ReactiveUI
 
         public override void PushViewController(NSViewController viewController, bool animated)
         {
+            base.PushViewController(viewController, animated);
+
             if (!this.routerInstigated)
             {
                 // code must be pushing a view directly against nav controller rather than using the router, so we need to manually sync up the router state
@@ -100,8 +115,6 @@ namespace ReactiveUI
                 var viewModel = (IRoutableViewModel)view.ViewModel;
                 this.Router.NavigationStack.Add(viewModel);
             }
-
-            base.PushViewController(viewController, animated);
         }
 
         public override NSViewController PopViewController(bool animated)
