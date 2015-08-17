@@ -28,6 +28,11 @@ namespace ReactiveUI
      */
     public static class RxApp
     {
+        // only exists in my TQ branch to make sure I don't accidentally end up using the wrong RxUI from TQ
+        public static void VerifyTQ()
+        {
+        }
+
         static RxApp()
         {
 #if !PORTABLE
