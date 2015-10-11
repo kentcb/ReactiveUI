@@ -22,6 +22,7 @@ namespace ReactiveUI
     public class ViewModelViewHost : ReactiveViewController
     {
         private readonly SerialDisposable currentView;
+        private readonly ObservableAsPropertyHelper<string> viewContract;
         private IViewLocator viewLocator;
         private NSViewController defaultContent;
         private IReactiveObject viewModel;
@@ -30,6 +31,9 @@ namespace ReactiveUI
         public ViewModelViewHost()
         {
             this.currentView = new SerialDisposable();
+            this.viewContract = this
+                .WhenAnyObservable(x => x.ViewContractObservable)
+                .ToProperty(this, x => x.ViewContract, scheduler: RxApp.MainThreadScheduler);
 
             this.Initialize();
         }
@@ -56,6 +60,12 @@ namespace ReactiveUI
         {
             get { return viewContractObservable; }
             set { this.RaiseAndSetIfChanged(ref viewContractObservable, value); }
+        }
+
+        public string ViewContract
+        {
+            get { return this.viewContract.Value; }
+            set { ViewContractObservable = Observable.Return(value); }
         }
 
         private void Initialize()
@@ -128,25 +138,34 @@ namespace ReactiveUI
             if (disposing)
             {
                 this.currentView.Dispose();
+                this.viewContract.Dispose();
             }
         }
 
-        private static void Adopt(UIViewController parent, UIViewController child)
+        private static void Adopt(NSViewController parent, NSViewController child)
         {
             parent.AddChildViewController(child);
             parent.View.AddSubview(child.View);
 
             // ensure the child view fills our entire frame
             child.View.Frame = parent.View.Bounds;
+#if UIKIT
             child.View.AutoresizingMask = UIViewAutoresizing.FlexibleWidth | UIViewAutoresizing.FlexibleHeight;
+#else
+            child.View.AutoresizingMask = NSViewResizingMask.WidthSizable | NSViewResizingMask.HeightSizable;
+#endif
             child.View.TranslatesAutoresizingMaskIntoConstraints = true;
 
+#if UIKIT
             child.DidMoveToParentViewController(parent);
+#endif
         }
 
-        private static void Disown(UIViewController child)
+        private static void Disown(NSViewController child)
         {
+#if UIKIT
             child.WillMoveToParentViewController(null);
+#endif
             child.View.RemoveFromSuperview();
             child.RemoveFromParentViewController();
         }

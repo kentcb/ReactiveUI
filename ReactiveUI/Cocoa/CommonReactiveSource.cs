@@ -84,20 +84,20 @@ namespace ReactiveUI
 
             this.mainDisposables.Add(
                 this
-                    .ObservableForProperty(
-                        x => x.SectionInfo,
-                        beforeChange: true,
-                        skipInitial: true)
-                    .Subscribe(
-                        _ => this.SectionInfoChanging(),
-                        ex => this.Log().ErrorException("Error occurred whilst SectionInfo changing.", ex)));
+                .ObservableForProperty(
+                    x => x.SectionInfo,
+                    beforeChange: true,
+                    skipInitial: true)
+                .Subscribe(
+                    _ => this.SectionInfoChanging(),
+                    ex => this.Log().ErrorException("Error occurred whilst SectionInfo changing.", ex)));
 
             this.mainDisposables.Add(
                 this
-                    .WhenAnyValue(x => x.SectionInfo)
-                    .Subscribe(
-                        this.SectionInfoChanged,
-                        ex => this.Log().ErrorException("Error occurred when SectionInfo changed.", ex)));
+                .WhenAnyValue(x => x.SectionInfo)
+                .Subscribe(
+                    this.SectionInfoChanged,
+                    ex => this.Log().ErrorException("Error occurred when SectionInfo changed.", ex)));
         }
 
         private bool IsDebugEnabled
@@ -180,7 +180,6 @@ namespace ReactiveUI
         private void SectionInfoChanged(IReadOnlyList<TSectionInfo> sectionInfo)
         {
             this.VerifyOnMainThread();
-
             // this ID just makes it possible to correlate log messages with a specific SectionInfo
             var sectionInfoId = SectionInfoIdGenerator.Generate();
             this.Log().Debug("[#{0}] SectionInfo changed to {1}.", sectionInfoId, sectionInfo);
@@ -201,16 +200,16 @@ namespace ReactiveUI
             var sectionChanging = reactiveSectionInfo == null
                 ? Observable.Never<Unit>()
                 : reactiveSectionInfo
-                    .Changing
-                    .Select(_ => Unit.Default);
+                .Changing
+                .Select(_ => Unit.Default);
 
             var sectionChanged =
                 (reactiveSectionInfo == null
                     ? Observable.Never<Unit>()
                     : reactiveSectionInfo
-                        .Changed
-                        .Select(_ => Unit.Default))
-                .StartWith(Unit.Default);
+                    .Changed
+                    .Select(_ => Unit.Default))
+                    .StartWith(Unit.Default);
 
             var disposables = new CompositeDisposable();
             disposables.Add(Disposable.Create(() => this.Log().Debug("[#{0}] Disposed of section info", sectionInfoId)));
@@ -227,45 +226,45 @@ namespace ReactiveUI
 
             disposables.Add(
                 sectionChanging.Subscribe(_ =>
-                {
-                    this.VerifyOnMainThread();
+                    {
+                        this.VerifyOnMainThread();
 
-                    this.Log().Debug("[#{0}] SectionInfo is changing.", sectionInfoId);
-                    sectionInfoDisposable.Disposable = Disposable.Empty;
-                }));
+                        this.Log().Debug("[#{0}] SectionInfo is changing.", sectionInfoId);
+                        sectionInfoDisposable.Disposable = Disposable.Empty;
+                    }));
 
             disposables.Add(
                 sectionChanged.Subscribe(x =>
-                {
-                    this.VerifyOnMainThread();
+                    {
+                        this.VerifyOnMainThread();
 
-                    this.Log().Debug("[#{0}] Calling ReloadData()", sectionInfoId);
-                    this.adapter.ReloadData();
+                        this.Log().Debug("[#{0}] Calling ReloadData()", sectionInfoId);
+                        this.adapter.ReloadData();
 
-                    // holds all the disposables created to monitor stuff inside the section
-                    var sectionDisposables = new CompositeDisposable();
-                    sectionInfoDisposable.Disposable = sectionDisposables;
+                        // holds all the disposables created to monitor stuff inside the section
+                        var sectionDisposables = new CompositeDisposable();
+                        sectionInfoDisposable.Disposable = sectionDisposables;
 
-                    // holds a single disposable for any outstanding request to apply pending changes
-                    var applyPendingChangesDisposable = new SerialDisposable();
-                    sectionDisposables.Add(applyPendingChangesDisposable);
+                        // holds a single disposable for any outstanding request to apply pending changes
+                        var applyPendingChangesDisposable = new SerialDisposable();
+                        sectionDisposables.Add(applyPendingChangesDisposable);
 
-                    var isReloading = adapter
-                        .IsReloadingData
-                        .DistinctUntilChanged()
-                        .Do(y => this.Log().Debug("[#{0}] IsReloadingData = {1}", sectionInfoId, y))
-                        .Publish();
-
-                    var anySectionChanged = Observable
-                            .Merge(
-                                sectionInfo
-                                    .Select((y, index) => y.Collection.Changed.Select(z => new { Section = index, Change = z })))
+                        var isReloading = adapter
+                            .IsReloadingData
+                            .DistinctUntilChanged()
+                            .Do(y => this.Log().Debug("[#{0}] IsReloadingData = {1}", sectionInfoId, y))
                             .Publish();
 
-                    // since reloads are applied asynchronously, it is possible for data to change whilst the reload is occuring
-                    // thus, we need to ensure any such changes result in another reload
-                    sectionDisposables.Add(
-                        isReloading
+                        var anySectionChanged = Observable
+                            .Merge(
+                                sectionInfo
+                                .Select((y, index) => y.Collection.Changed.Select(z => new { Section = index, Change = z })))
+                            .Publish();
+
+                        // since reloads are applied asynchronously, it is possible for data to change whilst the reload is occuring
+                        // thus, we need to ensure any such changes result in another reload
+                        sectionDisposables.Add(
+                            isReloading
                             .Where(y => y)
                             .Join(
                                 anySectionChanged,
@@ -273,17 +272,17 @@ namespace ReactiveUI
                                 _ => Observable.Empty<Unit>(),
                                 (_, __) => Unit.Default)
                             .Subscribe(_ =>
-                            {
-                                this.VerifyOnMainThread();
-                                this.Log().Debug("[#{0}] A section changed whilst a reload is in progress - forcing another reload.", sectionInfoId);
+                                {
+                                    this.VerifyOnMainThread();
+                                    this.Log().Debug("[#{0}] A section changed whilst a reload is in progress - forcing another reload.", sectionInfoId);
 
-                                adapter.ReloadData();
-                                this.pendingChanges.Clear();
-                                isCollectingChanges = false;
-                            }));
+                                    adapter.ReloadData();
+                                    this.pendingChanges.Clear();
+                                    isCollectingChanges = false;
+                                }));
 
-                    sectionDisposables.Add(
-                        isReloading
+                        sectionDisposables.Add(
+                            isReloading
                             .Where(y => !y)
                             .Join(
                                 anySectionChanged,
@@ -291,52 +290,52 @@ namespace ReactiveUI
                                 _ => Observable.Empty<Unit>(),
                                 (reloading, changeDetails) => new { Change = changeDetails.Change, Section = changeDetails.Section })
                             .Subscribe(y =>
-                            {
-                                this.VerifyOnMainThread();
-
-                                if (this.IsDebugEnabled)
                                 {
-                                    this.Log().Debug(
-                                        "[#{0}] Change detected in section {1} : Action = {2}, OldStartingIndex = {3}, NewStartingIndex = {4}, OldItems.Count = {5}, NewItems.Count = {6}",
-                                        sectionInfoId,
-                                        y.Section,
-                                        y.Change.Action,
-                                        y.Change.OldStartingIndex,
-                                        y.Change.NewStartingIndex,
-                                        y.Change.OldItems == null ? "null" : y.Change.OldItems.Count.ToString(),
-                                        y.Change.NewItems == null ? "null" : y.Change.NewItems.Count.ToString());
-                                }
+                                    this.VerifyOnMainThread();
 
-                                if (!this.isCollectingChanges)
-                                {
-                                    this.Log().Debug("[#{0}] A section changed whilst no reload is in progress - instigating collection of updates for later application.", sectionInfoId);
-                                    this.isCollectingChanges = true;
+                                    if (this.IsDebugEnabled)
+                                    {
+                                        this.Log().Debug(
+                                            "[#{0}] Change detected in section {1} : Action = {2}, OldStartingIndex = {3}, NewStartingIndex = {4}, OldItems.Count = {5}, NewItems.Count = {6}",
+                                            sectionInfoId,
+                                            y.Section,
+                                            y.Change.Action,
+                                            y.Change.OldStartingIndex,
+                                            y.Change.NewStartingIndex,
+                                            y.Change.OldItems == null ? "null" : y.Change.OldItems.Count.ToString(),
+                                            y.Change.NewItems == null ? "null" : y.Change.NewItems.Count.ToString());
+                                    }
 
-                                    // immediately indicate to the view that there are changes underway, even though we don't apply them immediately
-                                    // this ensures that if application code itself calls BeginUpdates/EndUpdates on the view before the changes have been applied, those inconsistencies
-                                    // between what's in the data source versus what the view believes is in the data source won't trigger any errors because of the outstanding
-                                    // BeginUpdates call (calls to BeginUpdates/EndUpdates can be nested)
-                                    this.Log().Debug("[#{0}] BeginUpdates", sectionInfoId);
-                                    adapter.BeginUpdates();
+                                    if (!this.isCollectingChanges)
+                                    {
+                                        this.Log().Debug("[#{0}] A section changed whilst no reload is in progress - instigating collection of updates for later application.", sectionInfoId);
+                                        this.isCollectingChanges = true;
 
-                                    applyPendingChangesDisposable.Disposable = RxApp.MainThreadScheduler.Schedule(
-                                        () =>
-                                        {
-                                            this.ApplyPendingChanges(sectionInfoId);
-                                            this.Log().Debug("[#{0}] EndUpdates", sectionInfoId);
-                                            adapter.EndUpdates();
-                                            isCollectingChanges = false;
-                                            applyPendingChangesDisposable.Disposable = null;
-                                        });
-                                }
+                                        // immediately indicate to the view that there are changes underway, even though we don't apply them immediately
+                                        // this ensures that if application code itself calls BeginUpdates/EndUpdates on the view before the changes have been applied, those inconsistencies
+                                        // between what's in the data source versus what the view believes is in the data source won't trigger any errors because of the outstanding
+                                        // BeginUpdates call (calls to BeginUpdates/EndUpdates can be nested)
+                                        this.Log().Debug("[#{0}] BeginUpdates", sectionInfoId);
+                                        adapter.BeginUpdates();
 
-                                this.pendingChanges.Add(Tuple.Create(y.Section, new PendingChange(y.Change)));
-                            },
-                            ex => this.Log().Error("[#{0}] Error while watching section collection: {1}", sectionInfoId, ex)));
+                                        applyPendingChangesDisposable.Disposable = RxApp.MainThreadScheduler.Schedule(
+                                            () =>
+                                            {
+                                                this.ApplyPendingChanges(sectionInfoId);
+                                                this.Log().Debug("[#{0}] EndUpdates", sectionInfoId);
+                                                adapter.EndUpdates();
+                                                isCollectingChanges = false;
+                                                applyPendingChangesDisposable.Disposable = null;
+                                            });
+                                    }
 
-                    sectionDisposables.Add(isReloading.Connect());
-                    sectionDisposables.Add(anySectionChanged.Connect());
-                }));
+                                    this.pendingChanges.Add(Tuple.Create(y.Section, new PendingChange(y.Change)));
+                                },
+                                ex => this.Log().Error("[#{0}] Error while watching section collection: {1}", sectionInfoId, ex)));
+
+                        sectionDisposables.Add(isReloading.Connect());
+                        sectionDisposables.Add(anySectionChanged.Connect());
+                    }));
         }
 
         private void ApplyPendingChanges(int sectionInfoId)
@@ -413,14 +412,14 @@ namespace ReactiveUI
                             {
                                 switch (normalizedUpdate.Type)
                                 {
-                                    case UpdateType.Add:
-                                        DoUpdate(adapter.InsertItems, new[] { normalizedUpdate.Index }, section);
-                                        break;
-                                    case UpdateType.Delete:
-                                        DoUpdate(adapter.DeleteItems, new[] { normalizedUpdate.Index }, section);
-                                        break;
-                                    default:
-                                        throw new NotSupportedException();
+                                case UpdateType.Add:
+                                    DoUpdate(adapter.InsertItems, new[] { normalizedUpdate.Index }, section);
+                                    break;
+                                case UpdateType.Delete:
+                                    DoUpdate(adapter.DeleteItems, new[] { normalizedUpdate.Index }, section);
+                                    break;
+                                default:
+                                    throw new NotSupportedException();
                                 }
                             }
                         }
@@ -437,36 +436,36 @@ namespace ReactiveUI
         {
             switch (pendingChange.Action)
             {
-                case NotifyCollectionChangedAction.Add:
-                    return Enumerable
+            case NotifyCollectionChangedAction.Add:
+                return Enumerable
+                    .Range(pendingChange.NewStartingIndex, pendingChange.NewItems == null ? 1 : pendingChange.NewItems.Count)
+                    .Select(x => Update.CreateAdd(x));
+            case NotifyCollectionChangedAction.Remove:
+                return Enumerable
+                    .Range(pendingChange.OldStartingIndex, pendingChange.OldItems == null ? 1 : pendingChange.OldItems.Count)
+                    .Select(x => Update.CreateDelete(x));
+            case NotifyCollectionChangedAction.Move:
+                return Enumerable
+                    .Range(pendingChange.OldStartingIndex, pendingChange.OldItems == null ? 1 : pendingChange.OldItems.Count)
+                    .Select(x => Update.CreateDelete(x))
+                    .Concat(
+                        Enumerable
                         .Range(pendingChange.NewStartingIndex, pendingChange.NewItems == null ? 1 : pendingChange.NewItems.Count)
-                        .Select(x => Update.CreateAdd(x));
-                case NotifyCollectionChangedAction.Remove:
-                    return Enumerable
-                        .Range(pendingChange.OldStartingIndex, pendingChange.OldItems == null ? 1 : pendingChange.OldItems.Count)
-                        .Select(x => Update.CreateDelete(x));
-                case NotifyCollectionChangedAction.Move:
-                    return Enumerable
-                        .Range(pendingChange.OldStartingIndex, pendingChange.OldItems == null ? 1 : pendingChange.OldItems.Count)
-                        .Select(x => Update.CreateDelete(x))
-                        .Concat(
-                            Enumerable
-                                .Range(pendingChange.NewStartingIndex, pendingChange.NewItems == null ? 1 : pendingChange.NewItems.Count)
-                                .Select(x => Update.CreateAdd(x)));
-                case NotifyCollectionChangedAction.Replace:
-                    return Enumerable
-                        .Range(pendingChange.NewStartingIndex, pendingChange.NewItems == null ? 1 : pendingChange.NewItems.Count)
-                        .SelectMany(x => new[] { Update.CreateDelete(x), Update.CreateAdd(x) });
-                default:
-                    throw new NotSupportedException("Don't know how to deal with " + pendingChange.Action);
+                        .Select(x => Update.CreateAdd(x)));
+            case NotifyCollectionChangedAction.Replace:
+                return Enumerable
+                    .Range(pendingChange.NewStartingIndex, pendingChange.NewItems == null ? 1 : pendingChange.NewItems.Count)
+                    .SelectMany(x => new[] { Update.CreateDelete(x), Update.CreateAdd(x) });
+            default:
+                throw new NotSupportedException("Don't know how to deal with " + pendingChange.Action);
             }
         }
 
         private void DoUpdate(Action<NSIndexPath[]> method, IEnumerable<int> update, int section)
         {
             var toChange = update
-                 .Select(x => NSIndexPath.FromRowSection(x, section))
-                 .ToArray();
+                .Select(x => NSIndexPath.FromRowSection(x, section))
+                .ToArray();
 
             if (this.IsDebugEnabled)
             {
