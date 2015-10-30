@@ -1,34 +1,36 @@
 using System;
-using ReactiveUI;
-using System.Runtime.Serialization;
 using System.ComponentModel;
-using System.Reflection;
 using System.Reactive;
 using System.Reactive.Subjects;
-using System.Reactive.Concurrency;
-using System.Linq;
-using System.Threading;
-using System.Reactive.Disposables;
-using System.Diagnostics.Contracts;
-using System.Runtime.CompilerServices;
-using System.Collections.Generic;
-using System.Drawing;
-using Splat;
 
 #if UNIFIED
 using Foundation;
-using UIKit;
-#else
-using MonoTouch.Foundation;
+#elif UIKIT
 using MonoTouch.UIKit;
+using MonoTouch.Foundation;
+using NSSplitViewController = MonoTouch.UIKit.UISplitViewController;
+using NSView = MonoTouch.UIKit.UIView;
+#else
+using MonoMac.AppKit;
+using MonoMac.Foundation;
+#endif
+
+#if UNIFIED && UIKIT
+using UIKit;
+using NSSplitViewController = UIKit.UISplitViewController;
+using NSView = UIKit.UIView;
+#elif UNIFIED && COCOA
+using AppKit;
 #endif
 
 namespace ReactiveUI
 {
-    public abstract class ReactiveSplitViewController : UISplitViewController,
+    public abstract class ReactiveSplitViewController : NSSplitViewController,
     IReactiveNotifyPropertyChanged<ReactiveSplitViewController>, IHandleObservableErrors, IReactiveObject, ICanActivate
     {
+#if UIKIT
         protected ReactiveSplitViewController(string nibName, NSBundle bundle) : base(nibName, bundle) { setupRxObj(); }
+#endif
         protected ReactiveSplitViewController(IntPtr handle) : base(handle) { setupRxObj(); }
         protected ReactiveSplitViewController(NSObjectFlag t) : base(t) { setupRxObj(); }
         protected ReactiveSplitViewController(NSCoder coder) : base(coder) { setupRxObj(); }
@@ -96,6 +98,7 @@ namespace ReactiveUI
         Subject<Unit> deactivated = new Subject<Unit>();
         public IObservable<Unit> Deactivated { get { return deactivated; } }
 
+#if UIKIT
         public override void ViewDidAppear(bool animated)
         {
             base.ViewDidAppear(animated);
@@ -109,5 +112,24 @@ namespace ReactiveUI
             deactivated.OnNext(Unit.Default);
             this.ActivateSubviews(false);
         }
+#else
+        public override void ViewDidAppear()
+        {
+            base.ViewDidAppear();
+            activated.OnNext(Unit.Default);
+#if UNIFIED
+            this.ActivateSubviews(true);
+#endif
+        }
+
+        public override void ViewDidDisappear()
+        {
+            base.ViewDidDisappear();
+            deactivated.OnNext(Unit.Default);
+#if UNIFIED
+            this.ActivateSubviews(false);
+#endif
+        }
+#endif
     }
 }

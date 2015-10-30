@@ -80,15 +80,15 @@ namespace ReactiveUI
             ++inFlightReloads;
             view.ReloadData();
 
-            // since ReloadData() queues the appropriate messages on the UI thread, we know we're done reloading
-            // when this subsequent message is processed (with one caveat - see FinishReloadData for details)
-            RxApp.MainThreadScheduler.Schedule(FinishReloadData);
-
             if (inFlightReloads == 1)
             {
                 Debug.Assert(!this.isReloadingData.Value);
                 this.isReloadingData.OnNext(true);
             }
+
+            // since ReloadData() queues the appropriate messages on the UI thread, we know we're done reloading
+            // when this subsequent message is processed (with one caveat - see FinishReloadData for details)
+            RxApp.MainThreadScheduler.Schedule(FinishReloadData);
         }
 
         public void BeginUpdates()
@@ -241,10 +241,6 @@ namespace ReactiveUI
             get { return elementSelected; }
         }
 
-        public IObservable<IEnumerable<NotifyCollectionChangedEventArgs>> DidPerformUpdates {
-            get { return commonSource.DidPerformUpdates; }
-        }
-
         public override UITableViewCell GetCell(UITableView tableView, NSIndexPath indexPath)
         {
             return commonSource.GetCell(indexPath);
@@ -267,7 +263,7 @@ namespace ReactiveUI
         {
             // iOS may call this method even when we have no sections, but only if we've overridden
             // EstimatedHeight(UITableView, NSIndexPath) in our UITableViewSource
-            if (section >= commonSource.NumberOfSections())
+            if (section >= commonSource.SectionInfo.Count)
             {
                 return 0;
             }
@@ -313,7 +309,7 @@ namespace ReactiveUI
         {
             // iOS may call this method even when we have no sections, but only if we've overridden
             // EstimatedHeight(UITableView, NSIndexPath) in our UITableViewSource
-            if (section >= commonSource.NumberOfSections())
+            if (section >= commonSource.SectionInfo.Count)
             {
                 return 0;
             }
@@ -332,7 +328,7 @@ namespace ReactiveUI
         {
             // iOS may call this method even when we have no sections, but only if we've overridden
             // EstimatedHeight(UITableView, NSIndexPath) in our UITableViewSource
-            if (section >= commonSource.NumberOfSections())
+            if (section >= commonSource.SectionInfo.Count)
             {
                 return 0;
             }
