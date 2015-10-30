@@ -56,8 +56,29 @@ namespace ReactiveUI
                 {
                     d(this
                         .WhenAnyValue(x => x.Router)
+                        .Where(x => x != null && x.NavigationStack.Count > 0 && this.ViewControllers.Length == 0)
+                        .Subscribe(x =>
+                        {
+                            this.routerInstigated = true;
+                            NSViewController view = null;
+
+                            foreach (var viewModel in x.NavigationStack)
+                            {
+                                view = this.ResolveView(this.Router.GetCurrentViewModel(), null);
+                                this.PushViewController(view, false);
+                            }
+
+                            this.titleUpdater.Disposable = this.Router.GetCurrentViewModel()
+                                .WhenAnyValue(y => y.UrlPathSegment)
+                                .Subscribe(y => view.NavigationItem.Title = y);
+
+                            this.routerInstigated = false;
+                        }));
+
+                    d(this
+                        .WhenAnyValue(x => x.Router)
                         .Where(x => x != null)
-                        .Select(x => x.NavigationStack.ItemsAdded.StartWith(x.GetCurrentViewModel()))
+                        .Select(x => x.NavigationStack.ItemsAdded)
                         .Switch()
                         .Where(x => x != null)
                         //.CombineLatest(this.WhenAnyObservable(x => x.ViewContractObservable).StartWith((string)null), (_, contract) => contract)
