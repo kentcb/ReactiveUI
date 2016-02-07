@@ -7,7 +7,7 @@ using System.Reflection;
 using System.Windows;
 using System.Windows.Input;
 
-#if WINRT
+#if NETFX_CORE
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Input;
 #endif
@@ -25,9 +25,9 @@ namespace ReactiveUI
             Tuple.Create("Click", typeof (RoutedEventArgs)),
 #endif
             Tuple.Create("TouchUpInside", typeof (EventArgs)),
-#if !MONO && !WINRT && !PORTABLE
+#if !MONO && !NETFX_CORE && !PORTABLE
             Tuple.Create("MouseUp", typeof (MouseButtonEventArgs)),
-#elif WINRT
+#elif NETFX_CORE
             Tuple.Create("PointerReleased", typeof(PointerRoutedEventArgs)),
             Tuple.Create("Tapped", typeof(TappedRoutedEventArgs)),
 #endif
@@ -71,19 +71,13 @@ namespace ReactiveUI
             var ret = new CompositeDisposable();
 
             object latestParameter = null;
-            bool useEventArgsInstead = false;
-
-            // NB: This is a bit of a hack - if commandParameter isn't specified,
-            // it will default to Observable.Empty. We're going to use termination
-            // of the commandParameter as a signal to use EventArgs.
-            ret.Add(commandParameter.Subscribe(
-                x => latestParameter = x,
-                () => useEventArgsInstead = true));
-
             var evt = Observable.FromEventPattern<TEventArgs>(target, eventName);
+
+            ret.Add(commandParameter.Subscribe(x => latestParameter = x));
+
             ret.Add(evt.Subscribe(ea => {
-                if (command.CanExecute(useEventArgsInstead ? ea : latestParameter)) {
-                    command.Execute(useEventArgsInstead ? ea : latestParameter);
+                if (command.CanExecute(latestParameter)) {
+                    command.Execute(latestParameter);
                 }
             }));
 

@@ -83,6 +83,7 @@
     <Compile Include="ExpressionRewriter.cs" />
     <Compile Include="Interactions.cs" />
     <Compile Include="Platform\ComponentModelTypeConverter.cs" />
+    <Compile Include="ViewAttributes.cs" />
     <Compile Include="Xaml\ReactiveUserControl.cs" />
     <Compile Include="Xaml\Attributes.cs" />
     <Compile Include="Xaml\WpfAutoSuspendHelper.cs" />
@@ -141,6 +142,10 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>VariadicTemplates.tt</DependentUpon>
     </Compile>
+    <Content Include="VariadicTemplates.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>VariadicTemplates.cs</LastGenOutput>
+    </Content>
     <Compile Include="WaitForDispatcherScheduler.cs" />
     <Compile Include="LoggingMixins.cs" />
     <Compile Include="IReactiveObject.cs" />
