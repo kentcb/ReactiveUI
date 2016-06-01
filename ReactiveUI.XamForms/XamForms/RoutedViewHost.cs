@@ -1,19 +1,21 @@
 ﻿using System;
-using Xamarin.Forms;
-using Splat;
-using ReactiveUI;
+using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
-using System.Diagnostics;
-using System.Reactive;
+using Splat;
+using Xamarin.Forms;
 
 namespace ReactiveUI.XamForms
 {
     public class RoutedViewHost : NavigationPage, IActivatable
     {
-        public static readonly BindableProperty RouterProperty = BindableProperty.Create<RoutedViewHost, RoutingState>(
-            x => x.Router, null, BindingMode.OneWay);
-
+        public static readonly BindableProperty RouterProperty = BindableProperty.Create(
+            nameof(Router),
+            typeof(RoutingState),
+            typeof(RoutedViewHost),
+            null,
+            BindingMode.OneWay);
+        
         public RoutingState Router {
             get { return (RoutingState)GetValue(RouterProperty); }
             set { SetValue(RouterProperty, value); }
